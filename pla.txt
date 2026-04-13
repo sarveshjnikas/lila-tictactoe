@@ -1,0 +1,111 @@
+✅ Complete Progress Summary
+
+📁 Project Structure
+lila-tictactoe/
+├── nakama/
+│   ├── docker-compose.yml
+│   ├── local.yml
+│   └── modules/
+│       └── main.js
+└── frontend/
+    └── src/
+        ├── App.js
+        ├── index.js
+        ├── index.css
+        ├── nakama.js
+        └── pages/
+            ├── Login.js
+            ├── Lobby.js
+            ├── Game.js
+            └── Result.js
+
+🖥️ Backend (Nakama)
+docker-compose.yml — runs Postgres + Nakama locally
+local.yml — Nakama config with:
+
+Console on port 7351
+Socket on port 7350
+JS entrypoint: main.js
+
+main.js — complete game logic:
+
+matchInit — creates empty board
+matchJoinAttempt — max 2 players
+matchJoin — assigns X/O, broadcasts game_start
+matchLoop — validates moves, switches turns, detects winner, rebroadcasts game_start every tick until game starts
+matchLeave — opponent wins if someone disconnects
+matchTerminate / matchSignal — cleanup
+findMatch RPC — joins existing match or creates new one
+listMatches RPC — lists open rooms
+setDisplayName RPC — updates player name
+Leaderboard creation for tracking wins
+
+
+⚛️ Frontend (React)
+nakama.js — Nakama connection helper:
+
+authenticateAndConnect() — device ID auth, socket connect, normalizes user_id → userId
+setDisplayName() — updates display name
+findMatch() — calls find_match RPC
+listMatches() — calls list_matches RPC
+joinMatch() — joins match via socket
+sendMove() — sends move with opCode 2
+getSession() / getSocket() — getters
+
+App.js — routing between pages:
+
+Auto reconnects on refresh if name exists in localStorage
+Passes userId down to Game component
+Pages: loading → login → lobby → game → result
+
+Login.js
+
+Enter nickname
+Authenticates with Nakama via device ID
+Saves name to localStorage
+Skipped on refresh if already logged in
+
+Lobby.js
+
+Shows open rooms
+Auto Match button — finds or creates a match
+Browse rooms + Join button
+Refresh rooms button
+
+Game.js
+
+Uses useRef to avoid stale closure issues with userId
+Receives userId as prop from App
+Handles game_start, game_update, game_over messages
+Validates whose turn it is before sending move
+Shows X/O symbols with correct colors
+
+Result.js
+
+Shows Win / Lose / Draw / Opponent Left
+Fetches leaderboard from Nakama REST API
+Play Again button goes back to lobby
+
+
+🐛 Bugs Fixed Along The Way
+
+Docker healthcheck user mismatch
+Nakama port conflicts
+JS functions cannot be inlined in Nakama
+leaderboardCreate metadata must be object
+Module not loading (needed js_entrypoint in local.yml)
+Both players getting O (device ID collision between browsers)
+userId undefined (session returns user_id not userId)
+Stale closure in Game.js (fixed with useRef)
+Socket listener timing issue (fixed with matchLoop rebroadcast)
+RPC payload already parsed (removed double JSON.parse)
+
+
+🔜 What's Next
+
+Phase 4 — Fix remaining game flow bugs (current turn, symbol assignment)
+Phase 5 — Deploy to GCP
+Phase 6 — Leaderboard UI polish + timer mode (bonus)
+
+
+What's the current status — is the game flow working now or still issues?

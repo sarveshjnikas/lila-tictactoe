@@ -1,0 +1,20 @@
+name: nakama1
+data_dir: /nakama/data
+
+logger:
+  level: INFO
+
+console:
+  port: 7351
+  username: admin
+  password: password
+
+socket:
+  port: 7350
+
+api:
+  port: 7350
+
+runtime:
+  path: /nakama/data/modules
+  js_entrypoint: "main.js"
