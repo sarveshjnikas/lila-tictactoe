@@ -27,7 +27,7 @@ var winPatterns = [
       gameOver: false
     };
     logger.info("Match created");
-    return { state: state, tickRate: 1, label: "tictactoe" };
+    return { state: state, tickRate: 100, label: "tictactoe" };
   }
   
   function matchJoinAttempt(ctx, logger, nk, dispatcher, tick, state, presence, metadata) {
@@ -92,6 +92,18 @@ var winPatterns = [
       }));
     }
   
+    // Keep broadcasting game_over until match ends
+    if (state.gameOver && state.winner) {
+      dispatcher.broadcastMessage(4, JSON.stringify({
+        type: "game_over",
+        board: state.board,
+        winner: state.winner,
+        reason: "finished"
+      }));
+      if (tick - state.gameOverTick >= 10) return null;
+      return { state: state };
+    }
+  
     for (var i = 0; i < messages.length; i++) {
       var message = messages[i];
       if (message.opCode !== 2) continue;
@@ -121,6 +133,7 @@ var winPatterns = [
       var result = checkWinner(state.board);
       if (result !== "") {
         state.gameOver = true;
+        state.gameOverTick = tick;
         state.winner = result === "draw" ? "draw" : (result === "X" ? state.playerX : state.playerO);
   
         if (state.winner !== "draw") {
@@ -143,7 +156,6 @@ var winPatterns = [
       }
     }
   
-    if (state.gameOver) return null;
     return { state: state };
   }
   
