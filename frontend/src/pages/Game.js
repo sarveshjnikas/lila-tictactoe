@@ -1,28 +1,46 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getSocket, getSession, sendMove } from '../nakama';
+import { getSocket, sendMove } from '../nakama';
+
+function checkWinner(board) {
+  const patterns = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+  for (const [a,b,c] of patterns) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+      return board[a];
+    }
+  }
+  if (board.every(cell => cell !== '')) return 'draw';
+  return '';
+}
 
 export default function Game({ matchId, userId, onGameOver }) {
   const [board, setBoard] = useState(Array(9).fill(''));
   const [status, setStatus] = useState('Waiting for opponent...');
   const [mySymbol, setMySymbol] = useState('');
 
-  const myUserIdRef = useRef('');
+  const myUserIdRef = useRef(userId || '');
   const mySymbolRef = useRef('');
   const playerXRef = useRef('');
   const playerORef = useRef('');
   const currentTurnRef = useRef('');
+  const gameOverRef = useRef(false);
 
   useEffect(() => {
-    myUserIdRef.current = userId;
-    console.log('My user ID:', userId);
+    if (userId) myUserIdRef.current = userId;
+  }, [userId]);
 
+  useEffect(() => {
     const socket = getSocket();
+    if (!socket) return;
 
     socket.onmatchdata = (matchData) => {
       try {
         const decoded = new TextDecoder().decode(matchData.data);
         const data = JSON.parse(decoded);
-        console.log('Match data received:', data);
+        console.log('Match data:', data);
 
         if (data.type === 'game_start') {
           playerXRef.current = data.playerX;
@@ -35,46 +53,100 @@ export default function Game({ matchId, userId, onGameOver }) {
           setBoard(data.board);
           setMySymbol(symbol);
           setStatus(data.currentTurn === myUserIdRef.current ? 'Your turn!' : "Opponent's turn...");
-
-          console.log('I am:', myUserIdRef.current, 'Symbol:', symbol, 'PlayerX:', data.playerX, 'PlayerO:', data.playerO);
+          console.log('I am:', myUserIdRef.current, 'Symbol:', symbol);
         }
 
         if (data.type === 'game_update') {
           currentTurnRef.current = data.currentTurn;
           setBoard(data.board);
           setStatus(data.currentTurn === myUserIdRef.current ? 'Your turn!' : "Opponent's turn...");
-        }
 
-        if (data.type === 'game_over') {
-            setBoard(prev => data.board || prev);
+          // Check if opponent just won
+          const result = checkWinner(data.board);
+          if (result !== '') {
+            gameOverRef.current = true;
+            const winnerSymbol = result;
+            const winnerId = winnerSymbol === 'X' ? playerXRef.current : playerORef.current;
             setTimeout(() => {
               onGameOver({
-                winner: data.winner,
-                reason: data.reason,
+                winner: winnerId,
+                reason: 'finished',
                 myUserId: myUserIdRef.current,
                 playerX: playerXRef.current,
                 playerO: playerORef.current,
                 mySymbol: mySymbolRef.current,
               });
-            }, 500);
+            }, 300);
           }
+        }
+
+        if (data.type === 'game_over') {
+          if (!gameOverRef.current) {
+            gameOverRef.current = true;
+            if (data.board) setBoard(data.board);
+            onGameOver({
+              winner: data.winner,
+              reason: data.reason,
+              myUserId: myUserIdRef.current,
+              playerX: playerXRef.current,
+              playerO: playerORef.current,
+              mySymbol: mySymbolRef.current,
+            });
+          }
+        }
+
       } catch (e) {
         console.error('Match data error:', e);
       }
     };
 
-    return () => {
-      if (socket) socket.onmatchdata = null;
+    socket.ondisconnect = () => {
+      console.log('Socket disconnected in game');
+      if (!gameOverRef.current) {
+        gameOverRef.current = true;
+        onGameOver({
+          winner: 'opponent',
+          reason: 'finished',
+          myUserId: myUserIdRef.current,
+          playerX: playerXRef.current,
+          playerO: playerORef.current,
+          mySymbol: mySymbolRef.current,
+        });
+      }
     };
-  }, [matchId]);
+
+    return () => {
+      if (socket) {
+        socket.onmatchdata = null;
+        socket.ondisconnect = null;
+      }
+    };
+  }, [matchId, onGameOver]);
 
   function handleCellClick(index) {
-    if (currentTurnRef.current !== myUserIdRef.current) {
-      console.log('Not your turn. Current:', currentTurnRef.current, 'Me:', myUserIdRef.current);
-      return;
-    }
+    if (currentTurnRef.current !== myUserIdRef.current) return;
     if (board[index] !== '') return;
+
+    const newBoard = [...board];
+    newBoard[index] = mySymbolRef.current;
+    setBoard(newBoard);
+
     sendMove(matchId, index);
+
+    const result = checkWinner(newBoard);
+    if (result !== '') {
+      gameOverRef.current = true;
+      setTimeout(() => {
+        onGameOver({
+          winner: myUserIdRef.current,
+          reason: 'finished',
+          myUserId: myUserIdRef.current,
+          playerX: playerXRef.current,
+          playerO: playerORef.current,
+          mySymbol: mySymbolRef.current,
+        });
+      }, 300);
+    }
   }
 
   return (
