@@ -27,7 +27,7 @@ var winPatterns = [
       gameOver: false
     };
     logger.info("Match created");
-    return { state: state, tickRate: 100, label: "tictactoe" };
+    return { state: state, tickRate: 10, label: "tictactoe" };
   }
   
   function matchJoinAttempt(ctx, logger, nk, dispatcher, tick, state, presence, metadata) {
