@@ -1,6 +1,6 @@
 import { Client } from "@heroiclabs/nakama-js";
 
-const client = new Client("defaultkey", "136.113.206.157.nip.io", "443", true);
+const client = new Client("tictactoe_key_92xk2", "136.113.206.157.nip.io", "443", true);
 let session = null;
 let socket = null;
 
