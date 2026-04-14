@@ -1,6 +1,6 @@
 import { Client } from "@heroiclabs/nakama-js";
 
-const client = new Client("defaultkey", "localhost", "7350", false);
+const client = new Client("defaultkey", "136.113.206.157", "7350", false);
 
 let session = null;
 let socket = null;
