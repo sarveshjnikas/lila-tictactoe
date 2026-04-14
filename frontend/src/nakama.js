@@ -15,7 +15,7 @@ export async function authenticateAndConnect() {
     session.userId = session.user_id;
     console.log("Session created, userId:", session.userId);
   
-    socket = client.createSocket(false, false);
+    socket = client.createSocket(true, false);
     
     socket.ondisconnect = (evt) => {
       console.log("Socket disconnected:", evt);
