@@ -7,7 +7,7 @@ logger:
 console:
   port: 7351
   username: admin
-  password: password
+  password: <your_password>
 
 socket:
   port: 7350
